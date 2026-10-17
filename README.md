@@ -271,3 +271,7 @@ Every push to `main` makes GitHub build and publish a new container
 (see `.github/workflows/docker-publish.yml`); a tag like `v1.0.0` publishes version `1.0.0`.
 
 More details on how everything works inside: see [HOW_IT_WORKS.md](HOW_IT_WORKS.md).
+
+## License
+
+MIT – see [LICENSE](LICENSE).

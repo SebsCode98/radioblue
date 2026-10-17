@@ -18,6 +18,7 @@ FROM python:3.13-slim-trixie
 
 # install.sh uses this label to clean up old RadioBlue images after an update.
 LABEL org.opencontainers.image.title="radioblue" \
+      org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.description="Web radio and Bluetooth speaker control for the Raspberry Pi"
 
 # Print logs immediately (no buffering) and skip writing .pyc files.
