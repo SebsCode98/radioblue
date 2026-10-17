@@ -1,0 +1,98 @@
+<!doctype html>
+<!--
+  index.html - The single web page of RadioBlue.
+
+  This file only describes WHAT is on the page (the structure).
+    - The looks (colours, sizes) are in static/style.css
+    - The behaviour (what happens on a click) is in static/app.js
+
+  Parts in double curly braces are filled in by Flask (the Python web
+  server) before the page is sent to your browser - for example the volume.
+  The station buttons are added by app.js, so they can change without a reload.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RadioBlue</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main>
+    <header>
+      <h1>📻 RadioBlue</h1>
+      <p class="subtitle">Web radio for your Bluetooth box</p>
+    </header>
+
+    <!-- A message bar that shows errors or "done" messages. Hidden until needed. -->
+    <div id="message" class="message" hidden></div>
+
+    <!-- ============================ RADIO ============================ -->
+    <section class="card">
+      <div class="card-title">
+        <h2>Radio</h2>
+        <button id="edit-stations" class="small" aria-expanded="false">✎ Edit stations</button>
+      </div>
+
+      <!-- One button per saved station (filled in by app.js). -->
+      <div class="stations" id="stations"></div>
+
+      <!-- The station editor. Hidden until "Edit stations" is pressed. -->
+      <div class="editor" id="station-editor" hidden>
+        <p class="hint">Change a name or address and press “Save”. Your stations are saved on the Pi and kept during updates.</p>
+        <ul class="station-list" id="station-list"></ul>
+
+        <form id="add-station" class="add-station">
+          <h3>Add a station</h3>
+          <input name="name" placeholder="Name, e.g. My Favourite Radio" maxlength="60" required>
+          <input name="url" type="url" placeholder="Stream address, e.g. https://example.com/stream.mp3" required>
+          <button type="submit" class="primary">＋ Add station</button>
+          <p class="hint">Tip: search the station on <a href="https://www.radio-browser.info" target="_blank" rel="noopener">radio-browser.info</a> and copy its stream address (often ends in .mp3, .aac or .m3u).</p>
+        </form>
+
+        <div class="editor-footer">
+          <button id="restore-defaults" class="small danger">Restore default stations</button>
+          <button id="close-editor" class="small">Done</button>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="play" class="primary">▶ Play</button>
+        <button id="stop">■ Stop</button>
+      </div>
+
+      <label class="volume">
+        <span>Radio volume</span>
+        <input id="volume" type="range" min="0" max="100" step="1" value="{{ volume }}">
+        <span id="volume-value">{{ volume }} %</span>
+      </label>
+
+      <p class="now-playing" id="now-playing">Stopped</p>
+    </section>
+
+    <!-- ========================== KNOWN BOXES ========================== -->
+    <section class="card">
+      <h2>My Bluetooth boxes</h2>
+      <p class="hint">Boxes this Raspberry Pi already knows. Switch the box on, then press “Connect”.</p>
+      <ul class="devices" id="known-devices">
+        <li class="empty">Loading…</li>
+      </ul>
+    </section>
+
+    <!-- ============================ NEW BOX ============================ -->
+    <section class="card">
+      <h2>Add a new box</h2>
+      <p class="hint">
+        1. Put the box into pairing mode (usually: hold its Bluetooth button until the light flashes fast).<br>
+        2. Press “Search”. 3. Press “Pair &amp; connect” next to your box.
+      </p>
+      <button id="scan">🔍 Search for boxes</button>
+      <ul class="devices" id="new-devices"></ul>
+    </section>
+
+    <footer>Only reachable from your home network.</footer>
+  </main>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

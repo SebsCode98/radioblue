@@ -1,0 +1,3 @@
+# Python libraries RadioBlue needs (installed automatically by the Dockerfile).
+flask==3.1.2      # the web framework (shows the page, answers button clicks)
+gunicorn==23.0.0  # a robust web server that runs the Flask app inside Docker

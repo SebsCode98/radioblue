@@ -1,0 +1,10 @@
+# Files Git should ignore (temporary Python files, editor settings, ...)
+__pycache__/
+*.pyc
+.venv/
+.vscode/
+.idea/
+
+# Your own settings - never commit them (they live in the deployment folder).
+.env
+data/

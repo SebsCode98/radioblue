@@ -1,0 +1,51 @@
+# RadioBlue (web radio + Bluetooth box control) - how to run the container.
+#
+# managed-by: radioblue install.sh
+# This file is copied here by install.sh / update.sh and REPLACED on every
+# update. Don't edit it - put your settings in the file ".env" next to it.
+# (For bigger changes, create "compose.override.yaml" next to it; Docker
+# reads that one automatically and updates never touch it.)
+#
+# Everything written as ${NAME:-default} is taken from .env.
+
+name: radioblue
+
+services:
+  radioblue:
+    # Build the container from the RadioBlue source code (the Git project).
+    build: ${RADIOBLUE_SOURCE:?Please set RADIOBLUE_SOURCE in .env (path to the RadioBlue project)}
+    image: radioblue:latest
+    container_name: radioblue
+    restart: unless-stopped        # start again automatically after a reboot
+
+    # Run as your normal Pi user. The sound server (PipeWire) belongs to this
+    # user, so the container needs the same identity to be allowed to use it.
+    user: "${PUID:-1000}:${PGID:-1000}"
+
+    ports:
+      # <address on the Pi>:<port on the Pi>:<port inside the container>
+      # "0.0.0.0" = IPv4 only. Your home router (NAT) keeps IPv4 traffic from the
+      # internet out, and by NOT opening an IPv6 port the site can't be reached via
+      # a public IPv6 address either. app.py additionally rejects any visitor that
+      # is not from a private (home) network.
+      - "${RADIOBLUE_BIND:-0.0.0.0}:${RADIOBLUE_PORT:-8095}:8095"
+
+    environment:
+      TZ: ${TZ:-Etc/UTC}
+      # Tell pactl/mpv where the Pi's sound server (PipeWire) can be reached.
+      PULSE_SERVER: unix:/run/radioblue/pulse/native
+      # Tell bluetoothctl where the Pi's system D-Bus is (BlueZ listens there).
+      DBUS_SYSTEM_BUS_ADDRESS: unix:path=/run/dbus/system_bus_socket
+      # Optional tuning, see config.py in the project.
+      SCAN_SECONDS: ${SCAN_SECONDS:-10}
+      CONNECT_TIMEOUT_SECONDS: ${CONNECT_TIMEOUT_SECONDS:-20}
+
+    volumes:
+      # Your settings (stations, volume) live in the folder "data" next to this
+      # file. It is outside the container, so updates never delete it.
+      - ./data:/data
+      # Share the two "sockets" (communication files) with the container.
+      # ":ro" = read-only: the container can talk through them but cannot change
+      # or delete anything in these folders.
+      - /run/dbus/system_bus_socket:/run/dbus/system_bus_socket:ro
+      - /run/user/${PUID:-1000}/pulse:/run/radioblue/pulse:ro

@@ -1,0 +1,154 @@
+/*
+  style.css - How the RadioBlue page looks.
+
+  The colours are defined once at the top as "variables" (the --names).
+  Change them there to give the whole page a different look.
+  A second set of colours is used automatically when your phone or computer
+  is in dark mode.
+*/
+
+:root {
+  --background: #f3f5f9;
+  --card: #ffffff;
+  --text: #1c2230;
+  --muted: #667085;
+  --border: #dde2ea;
+  --accent: #1f6feb;        /* blue for the main buttons */
+  --accent-text: #ffffff;
+  --good: #1a7f37;          /* green for "connected" */
+  --bad: #c62828;           /* red for errors */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0f131a;
+    --card: #181e28;
+    --text: #e6e9ef;
+    --muted: #98a2b3;
+    --border: #2a3342;
+    --accent: #4c8dff;
+    --accent-text: #0b0f15;
+    --good: #3fb950;
+    --bad: #ff6b6b;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.4;
+}
+
+main {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+header h1 { margin: 8px 0 0; font-size: 1.8rem; }
+.subtitle { margin: 2px 0 16px; color: var(--muted); }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.card h2 { margin: 0 0 12px; font-size: 1.15rem; }
+[hidden] { display: none !important; }
+.hint { margin: 0 0 12px; color: var(--muted); font-size: 0.9rem; }
+
+/* ---------- Buttons ---------- */
+button {
+  font: inherit;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--text);
+  cursor: pointer;
+}
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: 0.5; cursor: wait; }
+button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+button.small { padding: 6px 10px; font-size: 0.9rem; }
+button.danger { color: var(--bad); }
+
+/* ---------- Radio ---------- */
+.stations { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.station.selected { border: 2px solid var(--accent); font-weight: 600; }
+
+.controls { display: flex; gap: 8px; margin-bottom: 12px; }
+.controls button { flex: 1; }
+
+.volume { display: flex; align-items: center; gap: 10px; }
+.volume input { flex: 1; }
+#volume-value { width: 3.5em; text-align: right; color: var(--muted); }
+
+.now-playing { margin: 12px 0 0; color: var(--muted); }
+.now-playing.on { color: var(--good); font-weight: 600; }
+
+.card-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.card-title h2 { margin: 0; }
+
+/* ---------- Station editor ---------- */
+.editor { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 12px; margin-bottom: 12px; }
+.editor h3 { margin: 16px 0 8px; font-size: 1rem; }
+.editor a { color: var(--accent); }
+
+input {
+  font: inherit;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--text);
+}
+input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+.station-list { list-style: none; margin: 0; padding: 0; }
+.station-list li { padding: 10px 0; border-top: 1px solid var(--border); }
+.station-list li:first-child { border-top: none; }
+.station-list .fields { display: grid; gap: 6px; margin-bottom: 6px; }
+.station-list .fields input[type=url] { font-size: 0.85rem; color: var(--muted); }
+.station-list .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.add-station { display: grid; gap: 8px; }
+.add-station .hint { margin: 0; }
+
+.editor-footer { display: flex; justify-content: space-between; gap: 8px; margin-top: 16px; }
+
+/* ---------- Device lists ---------- */
+.devices { list-style: none; margin: 12px 0 0; padding: 0; }
+.devices li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.devices li:first-child { border-top: none; }
+.devices .name { flex: 1; min-width: 140px; }
+.devices .mac { display: block; color: var(--muted); font-size: 0.8rem; }
+.devices .state { font-size: 0.85rem; color: var(--muted); }
+.devices .state.on { color: var(--good); font-weight: 600; }
+.devices .empty { color: var(--muted); }
+
+/* ---------- Messages ---------- */
+.message {
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+.message.error { border-color: var(--bad); color: var(--bad); }
+
+footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 8px 0 24px; }
