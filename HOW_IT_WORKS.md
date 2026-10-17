@@ -53,26 +53,34 @@ therefore stored **outside** of it:
 |---|---|---|
 | Your stations, volume, last station | `data/settings.json` in the deployment folder, mounted into the container as `/data` | It is a folder on the Pi, not in the container. `install.sh` also copies it to `data/backups/` before every update. |
 | Port, user id, time zone | `.env` in the deployment folder | The installer creates it once and never overwrites it. |
+| The container itself | – | Nothing in it needs to survive; it is simply replaced by the new version. |
 | Paired Bluetooth boxes | `/var/lib/bluetooth` on the Pi (BlueZ) | The container never stores them; it only asks BlueZ. |
 
 `settings.json` carries a `version` number. If a future RadioBlue version stores settings
 differently, `settings.py` converts the old file automatically when it starts.
 
-The update itself (`update.sh` → `install.sh`):
+The update itself (`update.sh` downloads the newest `install.sh` and runs it):
 
-1. `git pull` downloads the new code into the project folder.
-2. `settings.json` is backed up; `.env` and `data/` are left alone.
-3. The managed files `compose.yaml` and `update.sh` are refreshed from `deploy/`.
-4. `docker compose up -d --build` builds the new container and replaces the old one.
-5. The old, now unused RadioBlue image is deleted to save space.
+1. `settings.json` is backed up; `.env` and `data/` are left alone.
+2. The managed files `compose.yaml` and `update.sh` are refreshed from `deploy/` on GitHub.
+3. `docker compose pull` downloads the newest container, `docker compose up -d` replaces
+   the old one with it.
+4. The old, now unused RadioBlue image is deleted to save space.
 
-## Which Raspberry Pis are supported?
+## Where does the container come from? Which Pis are supported?
 
-The image is built **on the Pi itself** from `python:3.13-slim-trixie`. That base image
-exists for 64-bit ARM (arm64), 32-bit ARM (armv7 and older) and normal PCs (amd64), and
-Docker automatically picks the one matching the Pi. All other parts (mpv, bluez,
-pulseaudio-utils, Flask, gunicorn) come from Debian or are pure Python, so nothing has to
-be compiled.
+On every push to `main`, GitHub Actions (`.github/workflows/docker-publish.yml`) builds the
+container and publishes it as `ghcr.io/sebscode98/radioblue`. It is built for three
+processor types at once, and Docker on the Pi automatically downloads the matching one:
+
+| Platform | Raspberry Pi |
+|---|---|
+| `linux/arm64` | Pi 3, 4, 5, Zero 2 W with a 64-bit OS |
+| `linux/arm/v7` | Pi 2, 3, 4, Zero 2 W with a 32-bit OS |
+| `linux/amd64` | (normal PCs – handy for testing) |
+
+The base image is `python:3.13-slim-trixie`. All other parts (mpv, bluez, pulseaudio-utils,
+Flask, gunicorn) come from Debian or are pure Python, so nothing has to be compiled.
 
 ## The files
 
@@ -88,8 +96,9 @@ be compiled.
 | `static/style.css` | The look of the web page (colours, sizes, dark mode). |
 | `static/app.js` | What happens when you click something on the page. |
 | `Dockerfile` | The recipe for building the container. |
-| `install.sh` | Installer and updater: checks the Pi, creates the deployment folder, builds and starts the container. |
-| `deploy/compose.yaml` | How to run the container: port, shared sockets, data folder, user, auto-restart. Copied to the deployment folder. |
+| `install.sh` | Installer and updater: checks the Pi, creates the deployment folder, downloads and starts the container. |
+| `.github/workflows/docker-publish.yml` | Builds the container for all Pi types and publishes it on GitHub. |
+| `deploy/compose.yaml` | How to run the container: image, port, shared sockets, data folder, user, auto-restart. Copied to the deployment folder. |
 | `deploy/env.example` | Template for `.env`, the per-Pi settings. |
 | `deploy/update.sh` | The update command. Copied to the deployment folder. |
 

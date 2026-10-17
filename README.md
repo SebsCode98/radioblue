@@ -18,11 +18,11 @@ A tiny website for your Raspberry Pi that plays web radio on your Bluetooth box.
 
 ### What you need
 
-- A Raspberry Pi with Bluetooth (Pi 3, 4, 5, Zero 2 W, or a Pi with a Bluetooth USB stick).
-- **Raspberry Pi OS** (Bookworm or Trixie) or another Debian-based system.
-  The 64-bit version is recommended. RadioBlue is built on the Pi itself, so it works on
-  64-bit (arm64) and 32-bit (armv7/armv6) systems alike. (Note that recent Docker versions
-  no longer support the 32-bit Raspberry Pi OS.)
+- A Raspberry Pi with Bluetooth: Pi 3, 4, 5 or Zero 2 W (or a Pi with a Bluetooth USB stick).
+  The original Pi Zero W and Pi 1 are not supported.
+- **Raspberry Pi OS** (Bookworm or Trixie) or another Debian-based system, 64-bit
+  recommended. Ready-made containers exist for 64-bit (arm64) and 32-bit (armv7) systems.
+  (Note that recent Docker versions no longer support the 32-bit Raspberry Pi OS.)
 - Internet access on the Pi and a Bluetooth speaker ("box").
 
 Tested on 64-bit Raspberry Pi OS (Debian 13 "trixie").
@@ -58,36 +58,45 @@ sudo systemctl enable --now bluetooth
 **d) Reboot** (`sudo reboot`) so all of this takes effect. Afterwards,
 `ls /run/user/$(id -u)/pulse/native` should show the file (that is the sound server's socket).
 
-### Step 2 – Download RadioBlue
+### Step 2 – Install RadioBlue
+
+Download the installer, (optionally) look at it, and run it:
 
 ```bash
-mkdir -p ~/projects
-git clone <address of this repository> ~/projects/radioblue
-```
-
-(Use the address shown under the green **Code** button on the repository page.
-If `git` is missing: `sudo apt install -y git`.)
-
-### Step 3 – Install and start it
-
-```bash
-cd ~/projects/radioblue
-./install.sh
+curl -fsSLO https://raw.githubusercontent.com/SebsCode98/radioblue/main/install.sh
+bash install.sh
 ```
 
 The installer checks the Pi, creates the folder **`~/docker/radioblue`** with your
-settings, builds the container and starts it. The first build takes a few minutes
-(longer on older Pis). At the end it prints the address of the page, e.g.
-`http://192.168.1.50:8095`.
+settings, downloads the ready-made container and starts it. You don't need Git and
+nothing is compiled. At the end it prints the address of the page, e.g.
+`http://192.168.1.50:8095`. You can delete `install.sh` afterwards.
 
 Options:
 
 | Command | What it does |
 |---|---|
-| `./install.sh --port 8123` | Use a different port for the web page (default: 8095) |
-| `./install.sh /path/to/folder` | Install to a different folder instead of `~/docker/radioblue` |
+| `bash install.sh --port 8123` | Use a different port for the web page (default: 8095) |
+| `bash install.sh /path/to/folder` | Install to a different folder instead of `~/docker/radioblue` |
 
-### Step 4 – Open the page
+<details>
+<summary>Prefer to do it by hand? (without the installer)</summary>
+
+```bash
+mkdir -p ~/docker/radioblue/data && cd ~/docker/radioblue
+curl -fsSLO https://raw.githubusercontent.com/SebsCode98/radioblue/main/deploy/compose.yaml
+docker compose up -d
+```
+
+This uses the defaults (port 8095, user id 1000 = the first user on a Raspberry Pi). To
+change them, download
+[`deploy/env.example`](deploy/env.example) as `.env` into the same folder and edit it.
+Create the `data` folder *before* the first start, as shown – otherwise Docker creates it
+for the root user and RadioBlue can't save your stations. To update later:
+`docker compose pull && docker compose up -d`.
+</details>
+
+### Step 3 – Open the page
 
 On your phone or computer (in the same home network as the Pi), open
 **`http://<address-of-your-pi>:8095`**. `hostname -I` on the Pi shows its address.
@@ -98,18 +107,19 @@ RadioBlue starts automatically after every reboot.
 
 ## Where things live
 
-| Folder / file | What is in it | Changed by updates? |
+Everything is in one folder, `~/docker/radioblue`:
+
+| File / folder | What is in it | Changed by updates? |
 |---|---|---|
-| `~/projects/radioblue` | The source code (this Git project) | yes |
-| `~/docker/radioblue/.env` | **Your settings for this Pi**: port, user id, time zone | **never** |
-| `~/docker/radioblue/data/settings.json` | **Your stations**, volume and last station | **never** |
-| `~/docker/radioblue/data/backups/` | Copies of `settings.json` from before each update (last 10) | new copy added |
-| `~/docker/radioblue/compose.yaml` | How Docker runs the container | replaced – don't edit |
-| `~/docker/radioblue/update.sh` | The update command | replaced – don't edit |
-| `~/docker/radioblue/compose.override.yaml` | *Optional*: your own Docker additions | **never** |
+| `.env` | **Your settings for this Pi**: port, user id, time zone | **never** |
+| `data/settings.json` | **Your stations**, volume and last station | **never** |
+| `data/backups/` | Copies of `settings.json` from before each update (last 10) | new copy added |
+| `compose.yaml` | How Docker runs the container | replaced – don't edit |
+| `update.sh` | The update command | replaced – don't edit |
+| `compose.override.yaml` | *Optional*: your own Docker additions | **never** |
 
 Your **paired Bluetooth boxes** are not stored in the container at all – the Pi's own
-Bluetooth service remembers them. Updating, rebuilding or even deleting RadioBlue never
+Bluetooth service remembers them. Updating, reinstalling or even deleting RadioBlue never
 makes the Pi forget a box.
 
 ## Updating
@@ -118,9 +128,8 @@ makes the Pi forget a box.
 ~/docker/radioblue/update.sh
 ```
 
-This downloads the newest version (`git pull`), backs up your `settings.json`, rebuilds
-the container and starts it again. Your `.env`, your stations and your Bluetooth boxes
-are kept.
+This backs up your `settings.json`, downloads the newest `compose.yaml` and container, and
+restarts RadioBlue. Your `.env`, your stations and your Bluetooth boxes are kept.
 
 **Restore a backup** of your stations:
 
@@ -135,10 +144,8 @@ docker compose start
 
 ### Port
 
-Either run the installer again with the new port:
-
 ```bash
-cd ~/projects/radioblue && ./install.sh --port 8123
+~/docker/radioblue/update.sh --port 8123
 ```
 
 or edit `RADIOBLUE_PORT` in `~/docker/radioblue/.env` and apply it with
@@ -154,7 +161,7 @@ or edit `RADIOBLUE_PORT` in `~/docker/radioblue/.env` and apply it with
 | `TZ` | Time zone for the log, e.g. `Europe/London`. Filled in by the installer. |
 | `SCAN_SECONDS` | How long "Search for boxes" searches (default 10) |
 | `CONNECT_TIMEOUT_SECONDS` | How long to wait when pairing/connecting (default 20) |
-| `RADIOBLUE_SOURCE` | Where the source code is. Filled in by the installer. |
+| `RADIOBLUE_IMAGE` | Which container to use, e.g. a fixed version like `ghcr.io/sebscode98/radioblue:1.0` |
 
 After editing `.env`, run `docker compose up -d` in `~/docker/radioblue`.
 
@@ -168,10 +175,9 @@ Run these in `~/docker/radioblue`:
 | See the log (error messages)      | `docker compose logs -f`         |
 | Stop it                           | `docker compose stop`            |
 | Start it again                    | `docker compose start`           |
-| Uninstall (keeps your settings)   | `docker compose down && docker rmi radioblue:latest` |
+| Uninstall (keeps your settings)   | `docker compose down --rmi all`  |
 
-To remove everything including your stations, uninstall and then delete
-`~/docker/radioblue` and `~/projects/radioblue`.
+To remove everything including your stations, uninstall and then delete `~/docker/radioblue`.
 
 ## How to use it
 
@@ -235,6 +241,7 @@ Do **not** set up port forwarding to this port on your router.
 |---|---|
 | `install.sh`: "Your user may not use Docker yet" | Run `sudo usermod -aG docker $USER`, log out and in again (or reboot). |
 | `install.sh`: "sound server socket ... not found" | Do step 1 b) – d) of the setup guide and reboot. |
+| "Could not download the container" | Check the Pi's internet connection, then run `update.sh` again. |
 | Page does not open | `docker compose ps` – is it "running"? Correct address and port? Same network? |
 | "Could not save the settings" | The data folder belongs to another user. Run `sudo chown -R $(id -u):$(id -g) ~/docker/radioblue/data` |
 | Stations are suddenly the defaults again | `settings.json` was damaged. It was kept as `data/settings.json.broken`; restore it or a file from `data/backups/`. |
@@ -245,6 +252,22 @@ Do **not** set up port forwarding to this port on your router.
 | Radio plays but no sound | Is the box connected *before* pressing Play? Is the radio volume above 0? Is the box itself turned up? |
 | A new station does not play | Check the stream address – open it in your browser; it should start playing or download a small playlist file. |
 | Radio stops by itself | The station's stream was interrupted. Press Play again. Check the Pi's internet. |
-| Port already in use | Pick another one: `./install.sh --port <number>` |
+| Port already in use | Pick another one: `~/docker/radioblue/update.sh --port <number>` |
+
+## Development
+
+To change the code yourself:
+
+```bash
+git clone https://github.com/SebsCode98/radioblue.git ~/projects/radioblue
+cd ~/projects/radioblue
+bash install.sh                                  # uses the deploy/ files of your copy
+docker build -t ghcr.io/sebscode98/radioblue:latest .
+cd ~/docker/radioblue && docker compose up -d    # restart with your own build
+```
+
+(`update.sh` replaces your build with the published version again.)
+Every push to `main` makes GitHub build and publish a new container
+(see `.github/workflows/docker-publish.yml`); a tag like `v1.0.0` publishes version `1.0.0`.
 
 More details on how everything works inside: see [HOW_IT_WORKS.md](HOW_IT_WORKS.md).

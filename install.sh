@@ -2,20 +2,31 @@
 # RadioBlue installer. Safe to run again at any time - it never deletes your
 # settings. Usage:
 #
-#   ./install.sh                     install to ~/docker/radioblue
-#   ./install.sh /some/other/folder  install to a different folder
-#   ./install.sh --port 8123         also set (or change) the web page port
+#   bash install.sh                     install to ~/docker/radioblue
+#   bash install.sh /some/other/folder  install to a different folder
+#   bash install.sh --port 8123         also set (or change) the web page port
 #
 # What it does:
 #   1. checks that Docker, Bluetooth and the sound server are ready
 #   2. creates the deployment folder with .env (your settings for this Pi),
 #      compose.yaml, update.sh and the data/ folder (your stations)
-#   3. backs up data/settings.json, builds the container and starts it
+#   3. backs up data/settings.json, downloads the newest container and starts it
+#
+# It works on its own (downloaded with curl) and from a copy of the Git project.
 set -euo pipefail
 
-source_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Where the deployment files are downloaded from (can be changed for forks).
+RADIOBLUE_RAW_URL="${RADIOBLUE_RAW_URL:-https://raw.githubusercontent.com/SebsCode98/radioblue/main}"
+
 deploy_dir="$HOME/docker/radioblue"
 port=""
+
+# When run from the Git project, use its deploy/ files instead of downloading.
+local_deploy=""
+if [[ -f "${BASH_SOURCE[0]:-}" ]]; then
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    [[ -f "$script_dir/deploy/compose.yaml" ]] && local_deploy="$script_dir/deploy"
+fi
 
 # ---------------------------------------------------------------- helpers
 bold()  { printf '\033[1m%s\033[0m\n' "$*"; }
@@ -23,7 +34,7 @@ info()  { printf '==> %s\n' "$*"; }
 warn()  { printf '\033[33mWARNING:\033[0m %s\n' "$*" >&2; }
 fail()  { printf '\033[31mERROR:\033[0m %s\n' "$*" >&2; exit 1; }
 
-usage() { sed -n '2,13p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0; }
+usage() { sed -n '2,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0; }
 
 # Set KEY=VALUE in the .env file (replace the line if it exists, else append).
 set_env() {
@@ -37,25 +48,36 @@ set_env() {
 
 get_env() { sed -n "s/^$1=//p" "$deploy_dir/.env" | tail -n 1; }
 
+# Install one file from deploy/ (local project or GitHub) as $2 with mode $3.
+fetch() {
+    local name="$1" target="$2" mode="$3" temporary
+    temporary="$(mktemp)"
+    if [[ -n "$local_deploy" ]]; then
+        cp "$local_deploy/$name" "$temporary"
+    else
+        curl -fsSL "$RADIOBLUE_RAW_URL/deploy/$name" -o "$temporary" \
+            || { rm -f "$temporary"; fail "Could not download $name from $RADIOBLUE_RAW_URL"; }
+    fi
+    install -m "$mode" "$temporary" "$target"
+    rm -f "$temporary"
+}
+
 # ---------------------------------------------------------------- arguments
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -h|--help) usage ;;
         --port)    port="${2:-}"; shift 2 ;;
         --port=*)  port="${1#--port=}"; shift ;;
-        -*)        fail "Unknown option: $1 (see ./install.sh --help)" ;;
+        -*)        fail "Unknown option: $1 (see install.sh --help)" ;;
         *)         deploy_dir="$1"; shift ;;
     esac
 done
 if [[ -n "$port" ]] && ! [[ "$port" =~ ^[0-9]+$ && "$port" -ge 1024 && "$port" -le 65535 ]]; then
     fail "The port must be a number between 1024 and 65535."
 fi
-mkdir -p "$deploy_dir"
-deploy_dir="$(cd "$deploy_dir" && pwd)"
 
 bold "RadioBlue installer"
-echo "    source code : $source_dir"
-echo "    install to  : $deploy_dir"
+echo "    install to : $deploy_dir"
 echo
 
 # ---------------------------------------------------------------- 1. checks
@@ -64,6 +86,7 @@ info "Checking your Raspberry Pi"
 [[ $EUID -ne 0 ]] || fail "Please run this as your normal user, not with sudo / as root.
        The radio has to run as the user who owns the sound server."
 
+[[ -n "$local_deploy" ]] || command -v curl >/dev/null || fail "curl is missing. Run: sudo apt install -y curl"
 command -v docker >/dev/null || fail "Docker is not installed. See the README, step 1."
 docker compose version >/dev/null 2>&1 || fail "The Docker Compose plugin is missing. See the README, step 1."
 docker info >/dev/null 2>&1 || fail "Your user may not use Docker yet. Run:
@@ -91,28 +114,28 @@ fi
 
 # ---------------------------------------------------------------- 2. files
 info "Preparing $deploy_dir"
+mkdir -p "$deploy_dir"
+deploy_dir="$(cd "$deploy_dir" && pwd)"
 
 if [[ ! -f "$deploy_dir/.env" ]]; then
     timezone="$(timedatectl show -p Timezone --value 2>/dev/null || cat /etc/timezone 2>/dev/null || true)"
-    cp "$source_dir/deploy/env.example" "$deploy_dir/.env"
+    fetch env.example "$deploy_dir/.env" 600
     set_env PUID "$(id -u)"
     set_env PGID "$(id -g)"
     set_env TZ "${timezone:-Etc/UTC}"
     echo "    created .env (your settings for this Pi)"
 fi
-# Always point to THIS copy of the source code (in case it was moved).
-set_env RADIOBLUE_SOURCE "$source_dir"
 [[ -z "$port" ]] || { set_env RADIOBLUE_PORT "$port"; echo "    port set to $port"; }
 port="$(get_env RADIOBLUE_PORT)"; port="${port:-8095}"
 
-# Copy the managed files. An older, hand-written compose.yaml is kept as a backup.
+# Install the managed files. An older, hand-written compose.yaml is kept as a backup.
 if [[ -f "$deploy_dir/compose.yaml" ]] && ! grep -q "managed-by: radioblue" "$deploy_dir/compose.yaml"; then
     old="compose.yaml.old-$(date +%Y%m%d-%H%M%S)"
     mv "$deploy_dir/compose.yaml" "$deploy_dir/$old"
     echo "    your previous compose.yaml was saved as $old"
 fi
-install -m 644 "$source_dir/deploy/compose.yaml" "$deploy_dir/compose.yaml"
-install -m 755 "$source_dir/deploy/update.sh"    "$deploy_dir/update.sh"
+fetch compose.yaml "$deploy_dir/compose.yaml" 644
+fetch update.sh    "$deploy_dir/update.sh"    755
 
 # The data folder must belong to you, otherwise the container can't save stations.
 mkdir -p "$deploy_dir/data"
@@ -133,14 +156,18 @@ fi
 if command -v ss >/dev/null && ss -Hltn "sport = :$port" | grep -q . \
         && ! docker ps --filter name='^radioblue$' --format '{{.Ports}}' | grep -q ":$port->"; then
     warn "Port $port is already used by another program on this Pi.
-         Choose a free one with:  ./install.sh --port <number>"
+         Choose a free one with:  bash install.sh --port <number>"
 fi
 
 # ---------------------------------------------------------------- 3. start
-info "Building and starting the container (the first time this takes a few minutes)"
-(cd "$deploy_dir" && docker compose up -d --build --remove-orphans)
+info "Downloading the newest RadioBlue container"
+(cd "$deploy_dir" && docker compose pull) \
+    || warn "Could not download the container (no internet?). Using the version already on this Pi, if there is one."
 
-# Rebuilding leaves the previous RadioBlue image behind as "<none>". Remove
+info "Starting RadioBlue"
+(cd "$deploy_dir" && docker compose up -d --remove-orphans)
+
+# An update leaves the previous RadioBlue image behind as "<none>". Remove
 # those (only RadioBlue's - other images on this Pi are not touched).
 docker image prune -f --filter "label=org.opencontainers.image.title=radioblue" >/dev/null || true
 

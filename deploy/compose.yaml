@@ -1,20 +1,20 @@
 # RadioBlue (web radio + Bluetooth box control) - how to run the container.
 #
 # managed-by: radioblue install.sh
-# This file is copied here by install.sh / update.sh and REPLACED on every
-# update. Don't edit it - put your settings in the file ".env" next to it.
+# install.sh / update.sh download this file and REPLACE it on every update.
+# Don't edit it - put your settings in the file ".env" next to it.
 # (For bigger changes, create "compose.override.yaml" next to it; Docker
 # reads that one automatically and updates never touch it.)
 #
-# Everything written as ${NAME:-default} is taken from .env.
+# Everything written as ${NAME:-default} can be set in .env. Without a .env
+# file the defaults are used, which fit a standard Raspberry Pi OS install.
 
 name: radioblue
 
 services:
   radioblue:
-    # Build the container from the RadioBlue source code (the Git project).
-    build: ${RADIOBLUE_SOURCE:?Please set RADIOBLUE_SOURCE in .env (path to the RadioBlue project)}
-    image: radioblue:latest
+    # The ready-made RadioBlue container (built by GitHub for every Pi type).
+    image: ${RADIOBLUE_IMAGE:-ghcr.io/sebscode98/radioblue:latest}
     container_name: radioblue
     restart: unless-stopped        # start again automatically after a reboot
 

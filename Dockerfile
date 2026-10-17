@@ -1,11 +1,12 @@
 # Recipe for the RadioBlue container.
-# You normally don't run this yourself: ./install.sh (and later ./update.sh)
-# build it for you, using the compose.yaml in your deployment folder.
+# You normally don't build this yourself: GitHub builds it automatically
+# (.github/workflows/docker-publish.yml) for 64-bit ARM (arm64), 32-bit ARM
+# (armv7) and normal PCs (amd64), and install.sh downloads the right one.
 #
-# It builds on every Raspberry Pi: the base image "python:3.13-slim" exists
-# for 64-bit (arm64: Pi 3/4/5/Zero 2 with a 64-bit OS) and 32-bit ARM
-# (armv7 / armv6: older Pis and 32-bit OS), and also for normal PCs (amd64).
-# Docker automatically picks the right one for the machine it builds on.
+# To try out your own changes on the Pi, build it under the same name and
+# restart the container (in the deployment folder, e.g. ~/docker/radioblue):
+#   docker build -t ghcr.io/sebscode98/radioblue:latest ~/projects/radioblue
+#   docker compose up -d
 #
 # The container brings its own programs (mpv, bluetoothctl, pactl). Nothing is
 # installed on the Raspberry Pi itself. It only talks to the Pi's existing

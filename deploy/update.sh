@@ -3,21 +3,17 @@
 #
 # managed-by: radioblue install.sh (replaced on every update - don't edit)
 #
-# It downloads the newest RadioBlue code (git pull) and then runs install.sh,
-# which backs up your settings, rebuilds the container and starts it again.
-# Your .env, your stations (data/) and your paired Bluetooth boxes are kept.
+# It downloads the newest installer and runs it for this folder. The installer
+# backs up your settings, refreshes compose.yaml, downloads the newest
+# container and restarts it. Your .env, your stations (data/) and your paired
+# Bluetooth boxes are kept.
 set -euo pipefail
 
+RADIOBLUE_RAW_URL="${RADIOBLUE_RAW_URL:-https://raw.githubusercontent.com/SebsCode98/radioblue/main}"
 deploy_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-source_dir="$(sed -n 's/^RADIOBLUE_SOURCE=//p' "$deploy_dir/.env" | tail -n 1)"
-source_dir="${source_dir%\"}"; source_dir="${source_dir#\"}"
-if [[ -z "$source_dir" || ! -d "$source_dir/.git" ]]; then
-    echo "Could not find the RadioBlue project. Check RADIOBLUE_SOURCE in $deploy_dir/.env" >&2
-    exit 1
-fi
-
-echo "==> Downloading the newest RadioBlue version into $source_dir"
-git -C "$source_dir" pull --ff-only
-
-exec "$source_dir/install.sh" "$deploy_dir"
+# Download completely first, then run - a broken download never runs half a script.
+installer="$(mktemp)"
+trap 'rm -f "$installer"' EXIT
+curl -fsSL "$RADIOBLUE_RAW_URL/install.sh" -o "$installer"
+bash "$installer" "$deploy_dir" "$@"
